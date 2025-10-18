@@ -1,0 +1,8 @@
+name = "knue-www-preview-parser"
+main = "src/index.ts"
+compatibility_date = "2025-10-18"
+compatibility_flags = ["nodejs_compat"]
+
+[browser]
+binding = "BROWSER"
+remote = true
