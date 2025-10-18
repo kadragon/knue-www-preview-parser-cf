@@ -2,7 +2,7 @@
 
 ## Scope
 - Update API contract to expose cache metadata.
-- Define cache invalidation endpoint and admin auth requirements.
+- Define cache invalidation endpoint and authentication requirements.
 - Document TTL configurability and default value.
 
 ## Changes
@@ -14,7 +14,7 @@
    - Subsequent requests within TTL serve cached payload.
    - Default TTL: 86400 seconds (24h); override via `CACHE_TTL_SECONDS` env var.
 3. **Invalidation endpoint**
-   - `DELETE /cache?atchmnflNo={id}` available to admin token holders.
+   - `DELETE /cache?atchmnflNo={id}` uses the same bearer token gating as parse requests.
    - Returns 200 with `{ success: true, metadata: { atchmnflNo, cached: false, cacheTtlSeconds } }` on successful deletion.
    - Missing/invalid token → 401; missing `atchmnflNo` → 400.
 4. **Error semantics**

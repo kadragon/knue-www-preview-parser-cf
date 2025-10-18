@@ -140,7 +140,6 @@ Authorization: Bearer {token}
 - MUST cache parsed result on miss with TTL (default 86400 seconds)
 - MUST respect `CACHE_TTL_SECONDS` env override; values <= 0 disable caching
 - MUST expose `DELETE /cache?atchmnflNo={number}` endpoint for invalidation
-- MUST restrict invalidation endpoint to authenticated admin token
 - MUST respond with success even if key absent (idempotent delete)
 - MUST record cache hit/miss state in logs without sensitive data
 
@@ -224,7 +223,7 @@ Authorization: Bearer secret-token-123
 - Bearer token MUST be stored in Cloudflare Workers environment variable
 - MUST NOT log sensitive information (tokens, full URLs)
 - SHOULD implement rate limiting if abuse detected
-- Admin operations reuse bearer token but SHOULD be restricted to trusted clients
+- Cache invalidation shares the same bearer token gating as parsing API
 
 ### Reliability
 - MUST handle browser rendering failures
