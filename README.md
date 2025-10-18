@@ -45,10 +45,27 @@ npm run dev
 
 서버가 `http://localhost:8787`에서 실행됩니다.
 
+### Run Tests
+
+```bash
+npm test
+```
+
 ### Type Checking
 
 ```bash
 npm run type-check
+```
+
+### Manual Testing (Local)
+
+```bash
+# Start dev server with remote browser (requires Cloudflare account)
+npm run dev
+
+# In another terminal, test the endpoint
+curl -H "Authorization: Bearer YrAvnT6kkrakV4C9c0QRWNrh9dKA04CP7ltGtLZqFEo=" \
+  "http://localhost:8787/?atchmnflNo=78541"
 ```
 
 ## Deployment
@@ -140,9 +157,20 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ## Pricing
 
-- Workers Paid plan: $5/month
-- Browser Rendering: $5 per 1000 requests
-- [Cloudflare Workers Pricing](https://developers.cloudflare.com/workers/platform/pricing/)
+### Browser Rendering (as of Oct 2024)
+
+**Free Tier (Workers Paid Plan)**:
+- 10 hours browser usage per month
+- 10 concurrent browsers (averaged monthly)
+- **Estimated cost for typical usage**: $0/month (within free tier)
+
+**Pay-as-you-go**:
+- $0.09 per browser hour
+- Billing starts after exceeding free tier
+
+**Example**: 100 requests/day × 3 seconds each = ~2.5 hours/month → **Free** ✅
+
+See [Cloudflare Browser Rendering Pricing](https://developers.cloudflare.com/browser-rendering/platform/pricing/)
 
 ## Security
 
