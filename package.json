@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest"
   },
   "keywords": [
     "cloudflare-workers",
@@ -17,8 +18,10 @@
   "author": "kadragon",
   "license": "MIT",
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.9.13",
     "@cloudflare/workers-types": "^4.20241011.0",
     "typescript": "^5.6.3",
+    "vitest": "^3.2.4",
     "wrangler": "^4.43.0"
   },
   "dependencies": {
