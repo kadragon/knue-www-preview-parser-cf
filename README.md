@@ -7,6 +7,7 @@ Cloudflare Workers 기반 서비스로 한국교원대학교 문서 미리보기
 - 🚀 Cloudflare Workers + Browser Rendering API
 - 🔐 Bearer Token 인증
 - 📝 자동 Markdown 변환
+- 🗃️ Cloudflare KV 캐시 (기본 TTL 24시간, 설정 가능)
 - 🇰🇷 한글 문서 지원
 - ⚡ 서버리스 아키텍처
 
@@ -31,7 +32,18 @@ npx wrangler secret put BEARER_TOKEN
 # Enter your secure token (generate with: openssl rand -base64 32)
 ```
 
-### 3. Enable Browser Rendering
+### 3. Configure KV Namespace
+
+```bash
+# Create KV namespace (replace with your own name if needed)
+npx wrangler kv namespace create CACHE
+
+# Update wrangler.toml with the generated id/preview_id
+```
+
+> 캐시 TTL은 `CACHE_TTL_SECONDS` 환경변수로 조정 가능합니다. (기본값: 86400 초, `0` 또는 음수 → 캐시 비활성화)
+
+### 4. Enable Browser Rendering
 
 Cloudflare Dashboard → Workers & Pages → Browser Rendering → Enable
 
@@ -104,7 +116,9 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
   "metadata": {
     "atchmnflNo": "78541",
     "title": "【한국교원대학교 공고 제2025-202호】",
-    "parsedAt": "2025-10-18T12:00:00.000Z"
+    "parsedAt": "2025-10-18T12:00:00.000Z",
+    "cached": false,
+    "cacheTtlSeconds": 86400
   }
 }
 ```
@@ -135,6 +149,26 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
   "success": false,
   "error": "Gateway Timeout",
   "message": "Document parsing timeout"
+}
+```
+
+### Cache Invalidation
+
+```
+DELETE /cache?atchmnflNo={number}
+Authorization: Bearer YOUR_TOKEN
+```
+
+**성공 응답 (200):**
+```json
+{
+  "success": true,
+  "content": null,
+  "metadata": {
+    "atchmnflNo": "78541",
+    "cached": false,
+    "cacheTtlSeconds": 86400
+  }
 }
 ```
 
@@ -182,7 +216,8 @@ See [Cloudflare Browser Rendering Pricing](https://developers.cloudflare.com/bro
 
 - Request timeout: 30 seconds
 - Depends on KNUE document viewer structure
-- No content caching (MVP scope)
+- KV 캐시 전파 지연: 최대 60초 (Cloudflare KV 특성)
+- TTL 0 이하 설정 시 캐시 비활성화 (실시간 강제 파싱)
 
 ## Documentation
 

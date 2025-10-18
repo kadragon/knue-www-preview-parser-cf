@@ -1,9 +1,10 @@
 ---
 id: SPEC-API-001
-version: 1.0.0
+version: 1.1.0
 status: active
 created: 2025-10-18
 owner: kadragon
+last-updated: 2025-10-18
 ---
 
 # API Specification - KNUE Document Preview Parser
@@ -35,7 +36,9 @@ Authorization: Bearer {token}
   "metadata": {
     "atchmnflNo": "78541",
     "title": "Document Title",
-    "parsedAt": "2025-10-18T12:00:00.000Z"
+    "parsedAt": "2025-10-18T12:00:00.000Z",
+    "cached": false,
+    "cacheTtlSeconds": 86400
   }
 }
 ```
@@ -78,6 +81,19 @@ Authorization: Bearer {token}
 }
 ```
 
+#### Cache Invalidation Success (200 OK)
+```json
+{
+  "success": true,
+  "content": null,
+  "metadata": {
+    "atchmnflNo": "78541",
+    "cached": false,
+    "cacheTtlSeconds": 86400
+  }
+}
+```
+
 ## Acceptance Criteria
 
 ### AC-1: Authentication
@@ -106,6 +122,8 @@ Authorization: Bearer {token}
 - MUST return JSON response with `success`, `content`, `metadata` fields
 - MUST include ISO-8601 timestamp in `parsedAt`
 - MUST include original `atchmnflNo` in metadata
+- MUST include `cached` boolean flag indicating cache hit/miss
+- MUST include `cacheTtlSeconds` reflecting effective TTL in seconds
 
 ### AC-6: Error Handling
 - MUST handle network errors gracefully
@@ -116,6 +134,31 @@ Authorization: Bearer {token}
 ### AC-7: Performance
 - SHOULD complete parsing within 30 seconds
 - MUST timeout and return 504 if exceeds limit
+
+### AC-8: Caching
+- MUST attempt KV lookup using key format `doc:{atchmnflNo}`
+- MUST cache parsed result on miss with TTL (default 86400 seconds)
+- MUST respect `CACHE_TTL_SECONDS` env override; values <= 0 disable caching
+- MUST expose `DELETE /cache?atchmnflNo={number}` endpoint for invalidation
+- MUST restrict invalidation endpoint to authenticated admin token
+- MUST respond with success even if key absent (idempotent delete)
+- MUST record cache hit/miss state in logs without sensitive data
+
+## Cache Invalidation Endpoint
+
+### Endpoint
+```
+DELETE /cache?atchmnflNo={number}
+```
+
+### Behavior
+- Requires same Bearer token authentication as GET requests.
+- Deletes KV entry for `doc:{atchmnflNo}` and returns success with `cached: false`.
+- Returns 400 if `atchmnflNo` is missing; 401 for invalid/missing token.
+- Returns 500 if KV deletion fails.
+
+### Response
+See "Cache Invalidation Success (200 OK)" example above. Errors follow the standard format.
 
 ## Examples
 
@@ -135,7 +178,9 @@ Authorization: Bearer secret-token-123
   "metadata": {
     "atchmnflNo": "78541",
     "title": "【한국교원대학교 공고 제2025-202호】",
-    "parsedAt": "2025-10-18T12:00:00.000Z"
+    "parsedAt": "2025-10-18T12:00:00.000Z",
+    "cached": false,
+    "cacheTtlSeconds": 86400
   }
 }
 ```
@@ -179,13 +224,16 @@ Authorization: Bearer secret-token-123
 - Bearer token MUST be stored in Cloudflare Workers environment variable
 - MUST NOT log sensitive information (tokens, full URLs)
 - SHOULD implement rate limiting if abuse detected
+- Admin operations reuse bearer token but SHOULD be restricted to trusted clients
 
 ### Reliability
 - MUST handle browser rendering failures
 - MUST clean up browser resources after each request
 - SHOULD retry failed requests once before returning error
+- KV failures MUST fall back to direct parsing and log the incident
 
 ### Observability
 - SHOULD log request metadata (timestamp, atchmnflNo, duration)
 - SHOULD NOT log response content (privacy)
 - MUST log errors with stack traces
+- SHOULD log cache hit/miss/invalidation outcomes (without sensitive data)
