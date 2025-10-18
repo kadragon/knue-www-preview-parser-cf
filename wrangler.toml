@@ -1,4 +1,4 @@
-name = "knue-www-preview-parser"
+name = "knue-www-preview-parser-cf"
 main = "src/index.ts"
 compatibility_date = "2024-10-08"
 compatibility_flags = ["nodejs_compat"]
