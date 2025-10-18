@@ -1,8 +1,13 @@
 name = "knue-www-preview-parser"
 main = "src/index.ts"
-compatibility_date = "2025-10-18"
+compatibility_date = "2024-10-08"
 compatibility_flags = ["nodejs_compat"]
 
 [browser]
 binding = "BROWSER"
 remote = true
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "768a5bd69b0f4e83ae727322b41de983"
+preview_id = "c73be450341044a18f1bb7a8f0fe7291"

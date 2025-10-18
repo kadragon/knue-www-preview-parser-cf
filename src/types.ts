@@ -1,6 +1,10 @@
+import type { KVNamespace } from '@cloudflare/workers-types';
+
 export interface Env {
   BEARER_TOKEN: string;
   BROWSER: Fetcher;
+  CACHE: KVNamespace;
+  CACHE_TTL_SECONDS?: string;
 }
 
 export interface ParseResult {
@@ -8,14 +12,18 @@ export interface ParseResult {
   title: string;
 }
 
+export interface ResponseMetadata {
+  atchmnflNo: string;
+  title?: string;
+  parsedAt?: string;
+  cached: boolean;
+  cacheTtlSeconds: number;
+}
+
 export interface ApiSuccessResponse {
   success: true;
-  content: string;
-  metadata: {
-    atchmnflNo: string;
-    title: string;
-    parsedAt: string;
-  };
+  content: string | null;
+  metadata: ResponseMetadata;
 }
 
 export interface ApiErrorResponse {

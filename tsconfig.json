@@ -5,6 +5,9 @@
     "lib": ["ES2022", "DOM"],
     "moduleResolution": "bundler",
     "types": ["@cloudflare/workers-types/2023-07-01"],
+    "paths": {
+      "cloudflare:test": ["./src/types/cloudflare-test"]
+    },
     "resolveJsonModule": true,
     "allowJs": true,
     "checkJs": false,
