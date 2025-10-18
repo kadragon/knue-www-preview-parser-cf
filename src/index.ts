@@ -42,17 +42,22 @@ export default {
 
     if (cachingEnabled) {
       try {
-        const cachedEntry = (await env.CACHE.get(cacheKey, 'json')) as CacheEntry | null;
-        if (cachedEntry) {
+        const cachedEntry = (await env.CACHE.get(cacheKey, 'json')) as unknown;
+        if (isValidCacheEntry(cachedEntry)) {
           console.log(`[Cache] HIT ${cacheKey}`);
           const metadata: ResponseMetadata = {
             atchmnflNo: cachedEntry.metadata.atchmnflNo ?? atchmnflNo,
             title: cachedEntry.metadata.title,
             parsedAt: cachedEntry.metadata.parsedAt,
-            cacheTtlSeconds: cachedEntry.metadata.cacheTtlSeconds,
+            cacheTtlSeconds:
+              cachedEntry.metadata.cacheTtlSeconds ?? effectiveTtl,
             cached: true,
           };
           return successResponse(cachedEntry.content, metadata);
+        }
+
+        if (cachedEntry !== null) {
+          console.warn(`[Cache] Invalid entry for ${cacheKey}, treating as miss.`);
         }
 
         console.log(`[Cache] MISS ${cacheKey}`);
@@ -209,4 +214,38 @@ function logCacheError(operation: 'read' | 'write' | 'delete', key: string, erro
   if (stack) {
     console.error(stack);
   }
+}
+
+function isValidCacheEntry(candidate: unknown): candidate is CacheEntry {
+  if (!candidate || typeof candidate !== 'object') {
+    return false;
+  }
+
+  const entry = candidate as Partial<CacheEntry>;
+  if (typeof entry.content !== 'string') {
+    return false;
+  }
+
+  if (!entry.metadata || typeof entry.metadata !== 'object') {
+    return false;
+  }
+
+  const metadata = entry.metadata as Record<string, unknown>;
+  if ('cacheTtlSeconds' in metadata && typeof metadata.cacheTtlSeconds !== 'number') {
+    return false;
+  }
+
+  if ('atchmnflNo' in metadata && typeof metadata.atchmnflNo !== 'string') {
+    return false;
+  }
+
+  if ('title' in metadata && typeof metadata.title !== 'string') {
+    return false;
+  }
+
+  if ('parsedAt' in metadata && typeof metadata.parsedAt !== 'string') {
+    return false;
+  }
+
+  return true;
 }

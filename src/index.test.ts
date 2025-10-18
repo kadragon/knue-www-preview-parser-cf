@@ -205,6 +205,62 @@ describe('Worker API', () => {
       expect(kv.namespace.get).toHaveBeenCalledWith('doc:78541', 'json');
     });
 
+    it('treats malformed cache entry as a miss and re-parses', async () => {
+      const { env: localEnv, kv } = createMockEnv();
+      kv.store.set('doc:12345', {
+        value: JSON.stringify({
+          content: '# Stale content without metadata',
+        }),
+      });
+
+      mockParseDocument.mockResolvedValueOnce({
+        content: '# Fresh',
+        title: 'Fresh Title',
+      });
+
+      const request = authorizedRequest('https://worker.dev/?atchmnflNo=12345');
+      const ctx = createExecutionContext();
+      const response = await worker.fetch(request, localEnv, ctx);
+      await waitOnExecutionContext(ctx);
+
+      expect(response.status).toBe(200);
+      const json = (await response.json()) as any;
+      expect(json.metadata.cached).toBe(false);
+      expect(json.metadata.cacheTtlSeconds).toBe(86400);
+      expect(mockParseDocument).toHaveBeenCalledTimes(1);
+      expect(kv.namespace.put).toHaveBeenCalledWith(
+        'doc:12345',
+        expect.any(String),
+        expect.objectContaining({ expirationTtl: 86400 })
+      );
+    });
+
+    it('falls back to effective TTL when cached metadata lacks ttl', async () => {
+      const { env: localEnv, kv } = createMockEnv({ ttlSeconds: 3600 });
+      kv.store.set('doc:33333', {
+        value: JSON.stringify({
+          content: '# Cached',
+          metadata: {
+            atchmnflNo: '33333',
+            title: 'Cached Title',
+            parsedAt: '2025-10-18T01:23:45.000Z',
+          },
+        }),
+      });
+
+      const request = authorizedRequest('https://worker.dev/?atchmnflNo=33333');
+      const ctx = createExecutionContext();
+      const response = await worker.fetch(request, localEnv, ctx);
+      await waitOnExecutionContext(ctx);
+
+      expect(response.status).toBe(200);
+      const json = (await response.json()) as any;
+      expect(json.metadata.cached).toBe(true);
+      expect(json.metadata.cacheTtlSeconds).toBe(3600);
+      expect(json.metadata.title).toBe('Cached Title');
+      expect(mockParseDocument).not.toHaveBeenCalled();
+    });
+
     it('uses TTL override from environment', async () => {
       const { env: localEnv, kv } = createMockEnv({ ttlSeconds: 60 });
       mockParseDocument.mockResolvedValueOnce({
