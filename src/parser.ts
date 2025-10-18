@@ -76,42 +76,45 @@ async function scrollToBottom(page: Page): Promise<void> {
 }
 
 async function extractTextFromPage(page: Page): Promise<string[]> {
-  // iframe에서 직접 텍스트 추출
+  // iframe#innerWrap에서 #content_body의 텍스트 추출
   const result = await page.evaluate(() => {
-    const texts = [];
-
-    // iframe 찾기
-    const iframe = document.querySelector('iframe');
-    if (!iframe || !iframe.contentDocument) {
-      console.log('[Extract] No iframe found');
-      return texts;
+    // iframe#innerWrap 찾기
+    const iframe = document.getElementById('innerWrap') as HTMLIFrameElement;
+    if (!iframe) {
+      console.log('[Extract] iframe#innerWrap not found');
+      return [];
     }
 
-    const doc = iframe.contentDocument;
-
-    // 모든 텍스트 노드 추출
-    const walker = doc.createTreeWalker(
-      doc.body,
-      NodeFilter.SHOW_TEXT,
-      null
-    );
-
-    let node;
-    while ((node = walker.nextNode())) {
-      const text = (node.textContent || '').trim();
-      if (text.length > 0) {
-        texts.push(text);
-      }
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      console.log('[Extract] Cannot access iframe content');
+      return [];
     }
 
-    console.log('[Extract] Found', texts.length, 'text nodes in iframe');
-    return texts;
+    // #content_body 찾기
+    const contentBody = iframeDoc.getElementById('content_body');
+    if (!contentBody) {
+      console.log('[Extract] #content_body not found');
+      return [];
+    }
+
+    // innerText를 줄 단위로 분리
+    const text = contentBody.innerText;
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+    console.log('[Extract] Found', lines.length, 'text lines in #content_body');
+    return lines;
   });
 
   return result as string[];
 }
 
-function convertToMarkdown(textNodes: string[]): ParseResult {
+// Helper function for testing - extracts text from raw string
+export function extractTextFromIframe(rawText: string): string {
+  return rawText;
+}
+
+export function convertToMarkdown(textNodes: string[]): ParseResult {
   const lines: string[] = [];
   let title = '';
   let previousWasBlank = false;
