@@ -11,3 +11,10 @@ remote = true
 binding = "CACHE"
 id = "768a5bd69b0f4e83ae727322b41de983"
 preview_id = "c73be450341044a18f1bb7a8f0fe7291"
+
+[placement]
+mode = "smart"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
