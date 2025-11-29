@@ -12,7 +12,8 @@
     - MUST use Node.js v20 (LTS).
     - MUST install dependencies using `npm ci` for deterministic builds.
     - MUST execute `npm run type-check` to verify TypeScript types.
-    - MUST execute `npm run test` to run Vitest suite.
+    - MUST execute `npm run build` to verify the worker bundles successfully.
+    - MUST execute `npm run test:ci` to run Vitest suite.
 
 ## Dependency Management
 - **Dependabot**:
