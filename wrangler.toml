@@ -5,7 +5,9 @@ compatibility_flags = ["nodejs_compat"]
 
 [browser]
 binding = "BROWSER"
-remote = false
+# remote = true is the default for production deployments
+# For local testing, vitest uses miniflare with local: true
+# For wrangler dev with real browser, set remote = true in .dev.vars
 
 [[kv_namespaces]]
 binding = "CACHE"

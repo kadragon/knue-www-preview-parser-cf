@@ -27,10 +27,23 @@ npm install
 
 ### 2. Configure Environment
 
+**For Local Development** (`.dev.vars`):
+
+```bash
+# Create .dev.vars file
+cat > .dev.vars << EOF
+BEARER_TOKEN=YourTokenHere
+EOF
+```
+
+**For Production** (Cloudflare Secrets):
+
 ```bash
 npx wrangler secret put BEARER_TOKEN
 # Enter your secure token (generate with: openssl rand -base64 32)
 ```
+
+> **Note**: Browser Rendering configuration automatically uses remote browsers in production. For local unit testing, Vitest uses Miniflare with `local: true` (see `vitest.config.ts`).
 
 ### 3. Configure KV Namespace
 
