@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [browser]
 binding = "BROWSER"
-remote = true
+remote = false
 
 [[kv_namespaces]]
 binding = "CACHE"
