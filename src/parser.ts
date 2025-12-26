@@ -134,6 +134,7 @@ export function convertToMarkdown(textNodes: string[]): ParseResult {
       i + 1 < textNodes.length &&
       isTableLine(textNodes[i + 1].trim())
     ) {
+      const startIndex = i;
       const rows: string[][] = [];
 
       while (i < textNodes.length && isTableLine(textNodes[i].trim())) {
@@ -171,7 +172,8 @@ export function convertToMarkdown(textNodes: string[]): ParseResult {
         continue;
       }
 
-      i -= 1;
+      // Not a valid table, reset index to process the first line normally.
+      i = startIndex;
     }
 
     if (/^【.*】$/.test(text)) {
