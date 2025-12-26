@@ -1,0 +1,68 @@
+trace:
+  spec_id: SPEC-GOVERNANCE-001
+  task_id: TASK-GOVERNANCE-001
+
+done:
+  - task_id: TASK-GOVERNANCE-001
+    title: "Compact governance/spec/tasks structure"
+    status: done
+    completed: 2025-12-26
+    spec_id: SPEC-GOVERNANCE-001
+    test_refs:
+      - TEST-GOV-001
+      - TEST-GOV-002
+      - TEST-GOV-003
+    outcome: "Consolidated policies, reorganized specs and tasks, archived legacy files."
+  - task_id: TASK-INIT-PROJECT
+    title: "Initial project setup"
+    status: done
+    completed: 2025-10-18
+    spec_id: SPEC-API-001
+    test_refs:
+      - TEST-API-001
+      - TEST-API-002
+      - TEST-API-003
+  - task_id: TASK-CF-BROWSER-RENDERING-PARSER
+    title: "Browser rendering parser"
+    status: done
+    completed: 2025-10-18
+    spec_id: SPEC-PARSER-001
+    test_refs:
+      - TEST-PARSER-001
+      - TEST-PARSER-002
+      - TEST-PARSER-003
+  - task_id: TASK-CI-SETUP
+    title: "CI pipeline setup"
+    status: done
+    completed: 2025-10-18
+    spec_id: SPEC-CI-001
+    test_refs:
+      - TEST-CI-001
+      - TEST-CI-002
+      - TEST-CI-003
+      - TEST-CI-004
+  - task_id: TASK-KV-CACHING
+    title: "KV caching layer"
+    status: done
+    completed: 2025-12-26
+    spec_id: SPEC-API-001
+    test_refs:
+      - TEST-API-005
+    outcome: "Cache hit/miss, TTL override, and invalidation endpoint implemented with tests."
+  - task_id: TASK-API-ALIGN-001
+    title: "API spec alignment and error coverage"
+    status: done
+    completed: 2025-12-26
+    spec_id: SPEC-API-001
+    test_refs:
+      - TEST-API-006
+      - TEST-API-007
+    outcome: "Aligned API spec with 404/405 behavior and reduced parse timeout to 30s."
+  - task_id: TASK-PARSER-TABLE-001
+    title: "Parser table conversion support"
+    status: done
+    completed: 2025-12-26
+    spec_id: SPEC-PARSER-001
+    test_refs:
+      - TEST-PARSER-004
+    outcome: "Added table-like block conversion to Markdown and documented innerWrap/content_body extraction."

@@ -2,6 +2,10 @@ import { Env, ApiResponse, ResponseMetadata } from './types';
 import { extractBearerToken, validateToken } from './auth';
 import { parseDocument } from './parser';
 
+// Trace:
+//   spec_id: SPEC-API-001
+//   task_id: TASK-API-ALIGN-001
+
 const DEFAULT_CACHE_TTL_SECONDS = 86400;
 
 interface CacheEntry {
@@ -71,7 +75,7 @@ export default {
     try {
       const result = await withTimeout(
         parseDocument(atchmnflNo, env.BROWSER),
-        55000,
+        30000,
         'Document parsing timeout'
       );
 

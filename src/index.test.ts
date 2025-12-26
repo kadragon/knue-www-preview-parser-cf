@@ -4,6 +4,10 @@ import type { KVNamespace, KVNamespacePutOptions } from '@cloudflare/workers-typ
 import worker from './index';
 import { parseDocument } from './parser';
 
+// Trace:
+//   spec_id: SPEC-API-001
+//   task_id: TASK-API-ALIGN-001
+
 vi.mock('./parser', () => ({
   parseDocument: vi.fn(),
 }));
@@ -147,6 +151,38 @@ describe('Worker API', () => {
       await waitOnExecutionContext(ctx);
 
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    });
+
+    it('returns 405 for unsupported HTTP methods', async () => {
+      const { env: localEnv } = createMockEnv();
+      const request = authorizedRequest('https://worker.dev/?atchmnflNo=78541', {
+        method: 'POST',
+      });
+      const ctx = createExecutionContext();
+
+      const response = await worker.fetch(request, localEnv, ctx);
+      await waitOnExecutionContext(ctx);
+
+      expect(response.status).toBe(405);
+      const json = (await response.json()) as any;
+      expect(json.success).toBe(false);
+      expect(json.error).toBe('Method Not Allowed');
+    });
+
+    it('returns 404 for unsupported delete paths', async () => {
+      const { env: localEnv } = createMockEnv();
+      const request = authorizedRequest('https://worker.dev/invalid?atchmnflNo=78541', {
+        method: 'DELETE',
+      });
+      const ctx = createExecutionContext();
+
+      const response = await worker.fetch(request, localEnv, ctx);
+      await waitOnExecutionContext(ctx);
+
+      expect(response.status).toBe(404);
+      const json = (await response.json()) as any;
+      expect(json.success).toBe(false);
+      expect(json.error).toBe('Not Found');
     });
   });
 
