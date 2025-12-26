@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { extractTextFromIframe, convertToMarkdown } from './parser';
 
+// Trace:
+//   spec_id: SPEC-PARSER-001
+//   task_id: TASK-PARSER-TABLE-001
+
 describe('extractTextFromIframe', () => {
   it('should extract text from iframe #content_body', async () => {
     // This test will fail initially because we need to refactor parser.ts
@@ -55,5 +59,18 @@ describe('convertToMarkdown', () => {
 
     expect(content).toBe('');
     expect(title).toBe('Untitled Document');
+  });
+
+  it('should convert table-like rows into markdown table', () => {
+    const textNodes = [
+      '직종  채용인원  채용분야',
+      '사무원  1명  RISE사업운영',
+    ];
+
+    const { content } = convertToMarkdown(textNodes);
+
+    expect(content).toContain('| 직종 | 채용인원 | 채용분야 |');
+    expect(content).toContain('| --- | --- | --- |');
+    expect(content).toContain('| 사무원 | 1명 | RISE사업운영 |');
   });
 });

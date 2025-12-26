@@ -1,6 +1,10 @@
 import puppeteer, { Page } from '@cloudflare/puppeteer';
 import { ParseResult } from './types';
 
+// Trace:
+//   spec_id: SPEC-PARSER-001
+//   task_id: TASK-PARSER-TABLE-001
+
 export async function parseDocument(
   atchmnflNo: string,
   browser: Fetcher
@@ -119,9 +123,58 @@ export function convertToMarkdown(textNodes: string[]): ParseResult {
   let title = '';
   let previousWasBlank = false;
 
+  const isTableLine = (text: string): boolean => /\s{2,}/.test(text.trim());
+
   for (let i = 0; i < textNodes.length; i++) {
     const text = textNodes[i].trim();
     if (!text) continue;
+
+    if (
+      isTableLine(text) &&
+      i + 1 < textNodes.length &&
+      isTableLine(textNodes[i + 1].trim())
+    ) {
+      const startIndex = i;
+      const rows: string[][] = [];
+
+      while (i < textNodes.length && isTableLine(textNodes[i].trim())) {
+        const row = textNodes[i]
+          .trim()
+          .split(/\s{2,}/)
+          .map(cell => cell.trim())
+          .filter(cell => cell.length > 0);
+
+        if (row.length >= 2) {
+          rows.push(row);
+        }
+
+        i += 1;
+      }
+
+      if (rows.length >= 2) {
+        const header = rows[0];
+        const columnCount = Math.max(
+          ...rows.map(row => row.length)
+        );
+
+        const normalizeRow = (row: string[]) =>
+          Array.from({ length: columnCount }, (_, index) => row[index] ?? '');
+
+        lines.push(`| ${normalizeRow(header).join(' | ')} |`);
+        lines.push(`| ${Array.from({ length: columnCount }, () => '---').join(' | ')} |`);
+
+        for (const row of rows.slice(1)) {
+          lines.push(`| ${normalizeRow(row).join(' | ')} |`);
+        }
+
+        previousWasBlank = false;
+        i -= 1;
+        continue;
+      }
+
+      // Not a valid table, reset index to process the first line normally.
+      i = startIndex;
+    }
 
     if (/^【.*】$/.test(text)) {
       if (!title) title = text;

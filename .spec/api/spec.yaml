@@ -1,0 +1,43 @@
+spec_id: SPEC-API-001
+title: "API Contract for KNUE Preview Parser"
+given_when_then:
+  - given: "a request without a valid bearer token"
+    when: "the API is called"
+    then: "return 401 Unauthorized"
+  - given: "a request missing atchmnflNo"
+    when: "the API is called"
+    then: "return 400 Bad Request"
+  - given: "an unsupported HTTP method"
+    when: "the API is called"
+    then: "return 405 Method Not Allowed"
+  - given: "a DELETE request to an unsupported path"
+    when: "the API is called"
+    then: "return 404 Not Found"
+  - given: "a valid request"
+    when: "parsing succeeds"
+    then: "return 200 with JSON content and metadata"
+  - given: "a valid request"
+    when: "parsing exceeds timeout"
+    then: "return 504 Gateway Timeout"
+acceptance_tests:
+  - id: TEST-API-001
+    desc: "Reject missing or invalid bearer token with 401"
+  - id: TEST-API-002
+    desc: "Reject missing atchmnflNo with 400"
+  - id: TEST-API-003
+    desc: "Return success JSON with content and metadata"
+  - id: TEST-API-004
+    desc: "Return 504 on parsing timeout"
+  - id: TEST-API-005
+    desc: "Include cache metadata and support invalidation endpoint"
+  - id: TEST-API-006
+    desc: "Return 405 for unsupported HTTP methods"
+  - id: TEST-API-007
+    desc: "Return 404 for unsupported delete paths"
+dependencies:
+  - governance: "policies"
+linked_tasks:
+  - TASK-INIT-PROJECT
+  - TASK-KV-CACHING
+trace:
+  task_id: TASK-API-ALIGN-001

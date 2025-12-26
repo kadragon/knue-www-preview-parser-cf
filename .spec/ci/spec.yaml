@@ -1,0 +1,21 @@
+spec_id: SPEC-CI-001
+title: "CI Pipeline Requirements"
+given_when_then:
+  - given: "a push or pull request to main"
+    when: "CI runs"
+    then: "execute type check, build, and tests"
+acceptance_tests:
+  - id: TEST-CI-001
+    desc: "Runs on push to main"
+  - id: TEST-CI-002
+    desc: "Runs on pull request to main"
+  - id: TEST-CI-003
+    desc: "Uses Node.js 20 and npm ci"
+  - id: TEST-CI-004
+    desc: "Runs type-check, build, and test"
+dependencies:
+  - governance: "policies"
+linked_tasks:
+  - TASK-CI-SETUP
+trace:
+  task_id: TASK-GOVERNANCE-001

@@ -1,0 +1,36 @@
+spec_id: SPEC-PARSER-001
+title: "Parser Behavior for KNUE Preview Documents"
+given_when_then:
+  - given: "a KNUE preview URL"
+    when: "the page renders in Browser Rendering"
+    then: "extract text in visual order and convert to Markdown"
+  - given: "text with headings, lists, tables"
+    when: "conversion runs"
+    then: "preserve structure in Markdown"
+  - given: "no text extracted"
+    when: "parsing completes"
+    then: "return an error indicating empty document"
+acceptance_tests:
+  - id: TEST-PARSER-001
+    desc: "Extract all visible text in order"
+  - id: TEST-PARSER-002
+    desc: "Detect titles and headings"
+  - id: TEST-PARSER-003
+    desc: "Detect lists and normalize whitespace"
+  - id: TEST-PARSER-004
+    desc: "Handle table-like structures when present"
+  - id: TEST-PARSER-005
+    desc: "Preserve Korean and special characters"
+parsing_notes:
+  - "Navigate to https://www.knue.ac.kr/www/previewBbsFile.do?atchmnflNo={number}"
+  - "Wait 5 seconds after initial load to allow iframe content to render"
+  - "Locate iframe#innerWrap, then extract innerText from #content_body"
+  - "Split innerText into lines, trim, and ignore empty lines"
+  - "Convert headings, lists, and table-like blocks into Markdown"
+dependencies:
+  - governance: "policies"
+linked_tasks:
+  - TASK-CF-BROWSER-RENDERING-PARSER
+  - TASK-INIT-PROJECT
+trace:
+  task_id: TASK-PARSER-TABLE-001

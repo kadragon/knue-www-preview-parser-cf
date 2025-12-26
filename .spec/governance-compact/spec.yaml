@@ -1,0 +1,19 @@
+spec_id: SPEC-GOVERNANCE-001
+title: "Governance, Spec, and Task Compaction"
+given_when_then:
+  - given: "legacy .agents/, .spec/, .tasks/ structures"
+    when: "compaction runs"
+    then: "governance files exist in .governance and tasks/specs are reorganized"
+acceptance_tests:
+  - id: TEST-GOV-001
+    desc: "Policies consolidated into .governance/policies.md"
+  - id: TEST-GOV-002
+    desc: "Specs stored as .spec/<name>/spec.yaml"
+  - id: TEST-GOV-003
+    desc: ".tasks has backlog.yaml, current.yaml, done.yaml and archives"
+dependencies:
+  - governance: "policies"
+linked_tasks:
+  - TASK-GOVERNANCE-001
+trace:
+  task_id: TASK-GOVERNANCE-001
