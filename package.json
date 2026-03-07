@@ -19,8 +19,8 @@
   "author": "kadragon",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.18",
-    "@cloudflare/workers-types": "^4.20260111.0",
+    "@cloudflare/vitest-pool-workers": "^0.12.20",
+    "@cloudflare/workers-types": "^4.20260307.1",
     "typescript": "^5.6.3",
     "vitest": "^3.2.4",
     "wrangler": "^4.58.0"
