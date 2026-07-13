@@ -4,7 +4,7 @@
     "module": "ES2022",
     "lib": ["ES2022", "DOM"],
     "moduleResolution": "bundler",
-    "types": ["@cloudflare/workers-types/2023-07-01"],
+    "types": ["@cloudflare/workers-types"],
     "paths": {
       "cloudflare:test": ["./src/types/cloudflare-test"]
     },
