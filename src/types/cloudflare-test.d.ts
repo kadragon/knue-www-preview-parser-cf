@@ -1,5 +1,3 @@
-import type { ExecutionContext } from '@cloudflare/workers-types';
-
 declare module 'cloudflare:test' {
   export const env: Record<string, unknown>;
   export const SELF: ServiceWorkerGlobalScope;

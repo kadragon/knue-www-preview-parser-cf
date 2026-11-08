@@ -9,6 +9,10 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+    ignore:
+      # @cloudflare/vitest-pool-workers still requires vitest ^4; unblock once it supports v5.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
     groups:
       dependencies:
         patterns:
