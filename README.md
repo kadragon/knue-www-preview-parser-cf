@@ -165,6 +165,21 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 }
 ```
 
+### TSV Table Export
+
+문서 안의 실제 HTML `<table>`을 빈칸 위치 그대로 TSV로 내려받습니다. 기본 Markdown 응답은 바뀌지 않습니다.
+
+```
+GET /?atchmnflNo={number}&format=tsv&table={1-based table number}
+```
+
+- 응답: `text/tab-separated-values; charset=utf-8` 첨부 파일 (UTF-8 BOM, CRLF 줄바꿈 — 엑셀에서 바로 열림)
+- 셀 안의 줄바꿈·탭은 공백 하나로 합칩니다.
+- `=`, `+`, `-`, `@`로 시작해 수식으로 실행될 수 있는 셀은 앞에 `'`를 붙이고, 개수를 `X-Formula-Escaped-Cells` 헤더로 알립니다. 단, `- 항목`처럼 하이픈+공백 뒤에 글자가 오는 목록 기호는 `|`나 함수 호출(`HYPERLINK(` 등)이 없으면 그대로 둡니다.
+- 병합 셀(rowspan/colspan)·중첩 표·열 수가 다른 표는 추정하지 않고 `422`로 거절합니다.
+- 표가 없거나 번호가 범위를 벗어나면 `404`, `table` 누락·잘못된 값은 `400`.
+- 표 추출 결과는 Markdown 캐시(`doc:{n}`)와 별도 키(`tables:{n}`)에 캐시되며, `DELETE /cache`가 둘 다 지웁니다.
+
 ### Cache Invalidation
 
 ```

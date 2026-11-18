@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
 import type { KVNamespace, KVNamespacePutOptions } from '@cloudflare/workers-types';
 import worker from './index';
-import { parseDocument } from './parser';
+import { parseDocument, extractTables } from './parser';
 
 // Trace:
 //   spec_id: SPEC-API-001
@@ -10,9 +10,11 @@ import { parseDocument } from './parser';
 
 vi.mock('./parser', () => ({
   parseDocument: vi.fn(),
+  extractTables: vi.fn(),
 }));
 
 const mockParseDocument = vi.mocked(parseDocument);
+const mockExtractTables = vi.mocked(extractTables);
 
 interface MockKVRecord {
   value: string;
@@ -370,6 +372,117 @@ describe('Worker API', () => {
       expect(json.metadata.atchmnflNo).toBe('78541');
       expect(json.metadata.cacheTtlSeconds).toBe(86400);
       expect(kv.namespace.delete).toHaveBeenCalledWith('doc:78541');
+      expect(kv.namespace.delete).toHaveBeenCalledWith('tables:78541');
+    });
+  });
+
+  describe('TSV export', () => {
+    const rectangular = {
+      rows: [
+        ['구분', '일정', '비고'],
+        ['서류 접수', '', '방문 접수'],
+      ],
+      hasSpan: false,
+      hasNested: false,
+    };
+    const merged = { rows: [['a', 'b'], ['c']], hasSpan: true, hasNested: false };
+
+    async function fetchTsv(query: string, localEnv = createMockEnv().env) {
+      const ctx = createExecutionContext();
+      const response = await worker.fetch(
+        authorizedRequest(`https://worker.dev/?atchmnflNo=78541&${query}`),
+        localEnv,
+        ctx
+      );
+      await waitOnExecutionContext(ctx);
+      return response;
+    }
+
+    it('returns a TSV attachment that keeps the empty middle cell', async () => {
+      mockExtractTables.mockResolvedValue([merged, rectangular]);
+
+      const response = await fetchTsv('format=tsv&table=2');
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('text/tab-separated-values; charset=utf-8');
+      expect(response.headers.get('Content-Disposition')).toContain('78541-table2.tsv');
+      expect(response.headers.get('X-Formula-Escaped-Cells')).toBe('0');
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+      const body = new TextDecoder().decode(bytes.slice(3));
+      const rows = body.trimEnd().split('\r\n').map(line => line.split('\t'));
+      expect(rows[1]).toEqual(['서류 접수', '', '방문 접수']);
+      expect(mockParseDocument).not.toHaveBeenCalled();
+    });
+
+    it('reports escaped formula cells', async () => {
+      mockExtractTables.mockResolvedValue([
+        { rows: [['비고'], ['=1+1'], ['- 명절휴가비']], hasSpan: false, hasNested: false },
+      ]);
+
+      const response = await fetchTsv('format=tsv&table=1');
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('X-Formula-Escaped-Cells')).toBe('1');
+      const body = await response.text();
+      expect(body).toContain("'=1+1");
+      expect(body).toContain('\r\n- 명절휴가비');
+    });
+
+    it('rejects merged table with 422 instead of guessing', async () => {
+      mockExtractTables.mockResolvedValue([merged]);
+
+      const response = await fetchTsv('format=tsv&table=1');
+
+      expect(response.status).toBe(422);
+      const json = (await response.json()) as any;
+      expect(json.success).toBe(false);
+      expect(json.message).toMatch(/merged/i);
+    });
+
+    it('returns 404 when the document has no tables', async () => {
+      mockExtractTables.mockResolvedValue([]);
+      const response = await fetchTsv('format=tsv&table=1');
+      expect(response.status).toBe(404);
+    });
+
+    it('returns 404 for an out-of-range table number', async () => {
+      mockExtractTables.mockResolvedValue([rectangular]);
+      const response = await fetchTsv('format=tsv&table=3');
+      expect(response.status).toBe(404);
+      expect(((await response.json()) as any).message).toContain('1 tables');
+    });
+
+    it.each(['format=tsv', 'format=tsv&table=0', 'format=tsv&table=abc', 'format=xml'])(
+      'returns 400 for %s',
+      async query => {
+        const response = await fetchTsv(query);
+        expect(response.status).toBe(400);
+        expect(mockExtractTables).not.toHaveBeenCalled();
+      }
+    );
+
+    it('caches tables under a key separate from the Markdown cache', async () => {
+      mockExtractTables.mockResolvedValue([rectangular]);
+      const { env: localEnv, kv } = createMockEnv();
+
+      await fetchTsv('format=tsv&table=1', localEnv);
+      const second = await fetchTsv('format=tsv&table=1', localEnv);
+
+      expect(mockExtractTables).toHaveBeenCalledTimes(1);
+      expect(second.headers.get('X-Cache')).toBe('HIT');
+      expect(kv.store.has('tables:78541')).toBe(true);
+      expect(kv.store.has('doc:78541')).toBe(false);
+    });
+
+    it('keeps the default Markdown response when format is omitted', async () => {
+      mockParseDocument.mockResolvedValue({ content: '# Doc', title: 'Doc' });
+
+      const response = await fetchTsv('');
+
+      expect(response.headers.get('Content-Type')).toBe('application/json');
+      expect(((await response.json()) as any).content).toBe('# Doc');
+      expect(mockExtractTables).not.toHaveBeenCalled();
     });
   });
 });

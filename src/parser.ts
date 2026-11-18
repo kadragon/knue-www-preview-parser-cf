@@ -1,5 +1,5 @@
 import puppeteer, { Page } from '@cloudflare/puppeteer';
-import { ParseResult } from './types';
+import { ParseResult, RawTable } from './types';
 
 // Trace:
 //   spec_id: SPEC-PARSER-001
@@ -9,8 +9,62 @@ export async function parseDocument(
   atchmnflNo: string,
   browser: Fetcher
 ): Promise<ParseResult> {
+  return withViewerPage(atchmnflNo, browser, async page => {
+    // 페이지 구조 확인
+    const bodyContent = await page.evaluate(() => document.body.innerHTML.substring(0, 500));
+    console.log('[Parser] Page HTML preview:', bodyContent);
+
+    // 텍스트 추출
+    console.log('[Parser] Extracting text');
+    const textNodes = await extractTextFromPage(page);
+    console.log('[Parser] Extracted', textNodes.length, 'text nodes');
+
+    const { content, title } = convertToMarkdown(textNodes);
+    console.log('[Parser] Converted to markdown, title:', title);
+
+    return { content, title };
+  });
+}
+
+/** Reads every top-level <table> in #content_body, keeping empty cells in place. */
+export async function extractTables(
+  atchmnflNo: string,
+  browser: Fetcher
+): Promise<RawTable[]> {
+  return withViewerPage(atchmnflNo, browser, async page => {
+    const tables = (await page.evaluate(() => {
+      const iframe = document.getElementById('innerWrap') as HTMLIFrameElement | null;
+      const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
+      const contentBody = iframeDoc?.getElementById('content_body');
+      if (!contentBody) {
+        console.log('[Extract] #content_body not found');
+        return [];
+      }
+
+      return Array.from(contentBody.querySelectorAll('table'))
+        .filter(table => !table.parentElement?.closest('table'))
+        .map(table => {
+          const rows = Array.from(table.rows);
+          const cells = rows.flatMap(row => Array.from(row.cells));
+          return {
+            rows: rows.map(row => Array.from(row.cells).map(cell => cell.innerText)),
+            hasSpan: cells.some(cell => cell.rowSpan > 1 || cell.colSpan > 1),
+            hasNested: table.querySelector('table') !== null,
+          };
+        });
+    })) as RawTable[];
+    console.log('[Parser] Extracted', tables.length, 'tables');
+    return tables;
+  });
+}
+
+async function withViewerPage<T>(
+  atchmnflNo: string,
+  browser: Fetcher,
+  work: (page: Page) => Promise<T>
+): Promise<T> {
   console.log('[Parser] Starting parse for atchmnflNo:', atchmnflNo);
-  
+
   const browserInstance = await puppeteer.launch(browser);
   const page = await browserInstance.newPage();
 
@@ -28,19 +82,7 @@ export async function parseDocument(
     // 콘텐츠 로딩 대기
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // 페이지 구조 확인
-    const bodyContent = await page.evaluate(() => document.body.innerHTML.substring(0, 500));
-    console.log('[Parser] Page HTML preview:', bodyContent);
-
-    // 텍스트 추출
-    console.log('[Parser] Extracting text');
-    const textNodes = await extractTextFromPage(page);
-    console.log('[Parser] Extracted', textNodes.length, 'text nodes');
-
-    const { content, title } = convertToMarkdown(textNodes);
-    console.log('[Parser] Converted to markdown, title:', title);
-
-    return { content, title };
+    return await work(page);
   } finally {
     await browserInstance.close();
     console.log('[Parser] Browser closed');

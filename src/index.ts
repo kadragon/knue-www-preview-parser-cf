@@ -1,12 +1,20 @@
 import { Env, ApiResponse, ResponseMetadata } from './types';
 import { extractBearerToken, validateToken } from './auth';
-import { parseDocument } from './parser';
+import { parseDocument, extractTables } from './parser';
+import { checkTableSupport, toTsv, isRawTable } from './tables';
+import type { RawTable } from './types';
 
 // Trace:
 //   spec_id: SPEC-API-001
 //   task_id: TASK-API-ALIGN-001
 
 const DEFAULT_CACHE_TTL_SECONDS = 86400;
+const PARSE_TIMEOUT_MS = 30000;
+
+interface TablesCacheEntry {
+  tables: RawTable[];
+  parsedAt: string;
+}
 
 interface CacheEntry {
   content: string;
@@ -38,6 +46,14 @@ export default {
 
     if (!atchmnflNo) {
       return errorResponse('Bad Request', 'Missing required parameter: atchmnflNo', 400);
+    }
+
+    const format = url.searchParams.get('format');
+    if (format === 'tsv') {
+      return handleTsvRequest(url, atchmnflNo, env, ctx);
+    }
+    if (format !== null && format !== 'markdown') {
+      return errorResponse('Bad Request', 'Unsupported format. Use "markdown" or "tsv"', 400);
     }
 
     const effectiveTtl = resolveCacheTtl(env.CACHE_TTL_SECONDS);
@@ -75,7 +91,7 @@ export default {
     try {
       const result = await withTimeout(
         parseDocument(atchmnflNo, env.BROWSER),
-        30000,
+        PARSE_TIMEOUT_MS,
         'Document parsing timeout'
       );
 
@@ -110,24 +126,124 @@ export default {
 
       return successResponse(result.content, metadata);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : '';
-
-      console.error('Parse error:', errorMessage);
-      console.error('Stack trace:', errorStack);
-
-      if (errorMessage.includes('timeout')) {
-        return errorResponse('Gateway Timeout', errorMessage, 504);
-      }
-
-      if (errorMessage.includes('Iframe not found')) {
-        return errorResponse('Internal Server Error', 'Document viewer failed to load', 500);
-      }
-
-      return errorResponse('Internal Server Error', `Failed to parse document: ${errorMessage}`, 500);
+      return parseErrorResponse(error);
     }
   },
 };
+
+function parseErrorResponse(error: unknown): Response {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  const errorStack = error instanceof Error ? error.stack : '';
+
+  console.error('Parse error:', errorMessage);
+  console.error('Stack trace:', errorStack);
+
+  if (errorMessage.includes('timeout')) {
+    return errorResponse('Gateway Timeout', errorMessage, 504);
+  }
+
+  if (errorMessage.includes('Iframe not found')) {
+    return errorResponse('Internal Server Error', 'Document viewer failed to load', 500);
+  }
+
+  return errorResponse('Internal Server Error', `Failed to parse document: ${errorMessage}`, 500);
+}
+
+async function handleTsvRequest(
+  url: URL,
+  atchmnflNo: string,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  const tableParam = url.searchParams.get('table');
+  const tableNumber = tableParam !== null && /^[1-9]\d*$/.test(tableParam) ? Number(tableParam) : NaN;
+  if (Number.isNaN(tableNumber)) {
+    return errorResponse(
+      'Bad Request',
+      'format=tsv requires parameter table (1-based table number)',
+      400
+    );
+  }
+
+  const effectiveTtl = resolveCacheTtl(env.CACHE_TTL_SECONDS);
+  const cacheKey = buildTablesCacheKey(atchmnflNo);
+  let tables: RawTable[] | null = null;
+  let cached = false;
+
+  if (effectiveTtl > 0) {
+    try {
+      const entry = (await env.CACHE.get(cacheKey, 'json')) as unknown;
+      if (isValidTablesCacheEntry(entry)) {
+        tables = entry.tables;
+        cached = true;
+        console.log(`[Cache] HIT ${cacheKey}`);
+      } else {
+        console.log(`[Cache] MISS ${cacheKey}`);
+      }
+    } catch (error) {
+      logCacheError('read', cacheKey, error);
+    }
+  }
+
+  if (!tables) {
+    try {
+      tables = await withTimeout(
+        extractTables(atchmnflNo, env.BROWSER),
+        PARSE_TIMEOUT_MS,
+        'Document parsing timeout'
+      );
+    } catch (error) {
+      return parseErrorResponse(error);
+    }
+
+    if (effectiveTtl > 0) {
+      const entry: TablesCacheEntry = { tables, parsedAt: new Date().toISOString() };
+      ctx.waitUntil(
+        env.CACHE.put(cacheKey, JSON.stringify(entry), { expirationTtl: effectiveTtl }).catch(
+          error => {
+            logCacheError('write', cacheKey, error);
+          }
+        )
+      );
+    }
+  }
+
+  if (tables.length === 0) {
+    return errorResponse('Not Found', 'Document has no HTML tables to export', 404);
+  }
+
+  const table = tables[tableNumber - 1];
+  if (!table) {
+    return errorResponse(
+      'Not Found',
+      `Table ${tableNumber} not found (document has ${tables.length} tables)`,
+      404
+    );
+  }
+
+  const support = checkTableSupport(table);
+  if (!support.supported) {
+    return errorResponse(
+      'Unprocessable Entity',
+      `Table ${tableNumber} is not supported for TSV export: ${support.reason}`,
+      422
+    );
+  }
+
+  const { tsv, escapedCells } = toTsv(table.rows);
+  // BOM so Excel detects UTF-8 (Korean) when opening the file directly.
+  return new Response(`\uFEFF${tsv}\r\n`, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/tab-separated-values; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${atchmnflNo}-table${tableNumber}.tsv"`,
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Expose-Headers': 'X-Formula-Escaped-Cells, X-Cache',
+      'X-Formula-Escaped-Cells': String(escapedCells),
+      'X-Cache': cached ? 'HIT' : 'MISS',
+    },
+  });
+}
 
 function jsonResponse(data: ApiResponse, status = 200): Response {
   return new Response(JSON.stringify(data, null, 2), {
@@ -186,6 +302,16 @@ function buildCacheKey(atchmnflNo: string): string {
   return `doc:${atchmnflNo}`;
 }
 
+function buildTablesCacheKey(atchmnflNo: string): string {
+  return `tables:${atchmnflNo}`;
+}
+
+function isValidTablesCacheEntry(candidate: unknown): candidate is TablesCacheEntry {
+  if (!candidate || typeof candidate !== 'object') return false;
+  const entry = candidate as Partial<TablesCacheEntry>;
+  return Array.isArray(entry.tables) && entry.tables.every(isRawTable);
+}
+
 async function handleCacheInvalidation(url: URL, env: Env): Promise<Response> {
   const atchmnflNo = url.searchParams.get('atchmnflNo');
 
@@ -195,8 +321,8 @@ async function handleCacheInvalidation(url: URL, env: Env): Promise<Response> {
 
   const cacheKey = buildCacheKey(atchmnflNo);
   try {
-    await env.CACHE.delete(cacheKey);
-    console.log(`[Cache] DELETE ${cacheKey}`);
+    await Promise.all([env.CACHE.delete(cacheKey), env.CACHE.delete(buildTablesCacheKey(atchmnflNo))]);
+    console.log(`[Cache] DELETE ${cacheKey}, ${buildTablesCacheKey(atchmnflNo)}`);
   } catch (error) {
     logCacheError('delete', cacheKey, error);
     return errorResponse('Internal Server Error', 'Failed to invalidate cache entry', 500);
