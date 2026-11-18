@@ -12,6 +12,13 @@ export interface ParseResult {
   title: string;
 }
 
+/** A top-level <table> as read from the viewer DOM, cell text in source order. */
+export interface RawTable {
+  rows: string[][];
+  hasSpan: boolean;
+  hasNested: boolean;
+}
+
 export interface ResponseMetadata {
   atchmnflNo: string;
   title?: string;
