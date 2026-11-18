@@ -37,7 +37,15 @@ describe('toTsv', () => {
     expect(escapedCells).toBe(0);
   });
 
+  it('quotes cells containing double quotes so Excel keeps column boundaries', () => {
+    const { tsv } = toTsv([['"주의 사항', 'b', '=say "hi"']]);
+    expect(tsv).toBe('"""주의 사항"\tb\t"\'=say ""hi"""');
+  });
+
   it.each([
+    '- A1+B1',
+    '- Sheet2!A1',
+    '- abc',
     '- 2+3',
     '-  =1+1',
     "- cmd|' /C calc'!A0",
@@ -45,7 +53,7 @@ describe('toTsv', () => {
     '-명절휴가비',
   ])('still escapes hyphen cell that could act as a formula: %s', cell => {
     const { tsv, escapedCells } = toTsv([[cell]]);
-    expect(tsv.startsWith("'")).toBe(true);
+    expect(tsv.replace(/^"/, '').startsWith("'")).toBe(true);
     expect(escapedCells).toBe(1);
   });
 

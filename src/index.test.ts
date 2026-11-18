@@ -453,6 +453,28 @@ describe('Worker API', () => {
       expect(((await response.json()) as any).message).toContain('1 tables');
     });
 
+    it('returns 400 for a non-numeric atchmnflNo before touching the browser', async () => {
+      const ctx = createExecutionContext();
+      const response = await worker.fetch(
+        authorizedRequest('https://worker.dev/?atchmnflNo=12%22%3Bx&format=tsv&table=1'),
+        createMockEnv().env,
+        ctx
+      );
+      await waitOnExecutionContext(ctx);
+      expect(response.status).toBe(400);
+      expect(mockExtractTables).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a viewer load failure as an empty table list', async () => {
+      mockExtractTables.mockRejectedValueOnce(new Error('Iframe not found: #content_body unavailable'));
+      const { env: localEnv, kv } = createMockEnv();
+
+      const response = await fetchTsv('format=tsv&table=1', localEnv);
+
+      expect(response.status).toBe(500);
+      expect(kv.store.has('tables:78541')).toBe(false);
+    });
+
     it.each(['format=tsv', 'format=tsv&table=0', 'format=tsv&table=abc', 'format=xml'])(
       'returns 400 for %s',
       async query => {

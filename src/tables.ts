@@ -5,9 +5,11 @@ export type TableSupport = { supported: true } | { supported: false; reason: str
 // Leading characters that make Excel/Sheets treat a cell as a formula (OWASP CSV injection).
 const FORMULA_PREFIX = /^[=+\-@\t\r]/;
 // Korean notices use "- 항목" as a list bullet; prefixing those with ' shows a stray quote in Excel.
-const LIST_BULLET = /^-\s+[^\d\s=+\-@.,(]/;
-// Anything that could still execute: a DDE pipe or an ASCII function call such as HYPERLINK(.
-const FORMULA_SIGNAL = /\||[A-Za-z_][A-Za-z0-9_.]*\s*\(/;
+// Only bullets whose text starts with a non-ASCII character (e.g. Hangul) are exempt.
+const LIST_BULLET = /^-\s+[^\x00-\x7F]/;
+// Anything that could still reach other cells or execute: a DDE pipe, a sheet reference,
+// an ASCII function call such as HYPERLINK(, or an A1-style cell reference.
+const FORMULA_SIGNAL = /[|!]|[A-Za-z_][A-Za-z0-9_.]*\s*\(|\b[A-Za-z]{1,3}\$?\d+\b/;
 
 function needsFormulaEscape(cell: string): boolean {
   if (!FORMULA_PREFIX.test(cell)) return false;
@@ -37,11 +39,13 @@ export function toTsv(rows: string[][]): { tsv: string; escapedCells: number } {
     row
       .map(raw => {
         const cell = raw.replace(/\s+/g, ' ').trim();
+        let out = cell;
         if (needsFormulaEscape(cell)) {
           escapedCells += 1;
-          return `'${cell}`;
+          out = `'${cell}`;
         }
-        return cell;
+        // Excel treats " as a text qualifier on import; quote such fields so columns stay put.
+        return out.includes('"') ? `"${out.replace(/"/g, '""')}"` : out;
       })
       .join('\t')
   );

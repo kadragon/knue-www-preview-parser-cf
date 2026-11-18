@@ -37,8 +37,7 @@ export async function extractTables(
       const iframeDoc = iframe?.contentDocument || iframe?.contentWindow?.document;
       const contentBody = iframeDoc?.getElementById('content_body');
       if (!contentBody) {
-        console.log('[Extract] #content_body not found');
-        return [];
+        return null;
       }
 
       return Array.from(contentBody.querySelectorAll('table'))
@@ -48,11 +47,15 @@ export async function extractTables(
           const cells = rows.flatMap(row => Array.from(row.cells));
           return {
             rows: rows.map(row => Array.from(row.cells).map(cell => cell.innerText)),
-            hasSpan: cells.some(cell => cell.rowSpan > 1 || cell.colSpan > 1),
+            hasSpan: cells.some(cell => cell.rowSpan !== 1 || cell.colSpan !== 1),
             hasNested: table.querySelector('table') !== null,
           };
         });
-    })) as RawTable[];
+    })) as RawTable[] | null;
+    if (!tables) {
+      // Thrown (not cached as "no tables") so a slow viewer load is retried next request.
+      throw new Error('Iframe not found: #content_body unavailable');
+    }
     console.log('[Parser] Extracted', tables.length, 'tables');
     return tables;
   });

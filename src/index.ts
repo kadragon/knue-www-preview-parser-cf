@@ -155,6 +155,10 @@ async function handleTsvRequest(
   env: Env,
   ctx: ExecutionContext
 ): Promise<Response> {
+  if (!/^\d+$/.test(atchmnflNo)) {
+    return errorResponse('Bad Request', 'atchmnflNo must be numeric for format=tsv', 400);
+  }
+
   const tableParam = url.searchParams.get('table');
   const tableNumber = tableParam !== null && /^[1-9]\d*$/.test(tableParam) ? Number(tableParam) : NaN;
   if (Number.isNaN(tableNumber)) {
