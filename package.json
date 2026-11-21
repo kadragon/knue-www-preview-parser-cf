@@ -20,13 +20,13 @@
   "license": "MIT",
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.23.0",
-    "@cloudflare/workers-types": "^5.20261108.1",
+    "@cloudflare/workers-types": "^5.20261110.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.12",
-    "wrangler": "^4.158.0"
+    "wrangler": "^4.160.0"
   },
   "dependencies": {
-    "@cloudflare/puppeteer": "^1.4.0"
+    "@cloudflare/puppeteer": "^2.0.0"
   },
   "overrides": {
     "undici": "^7.30.1",
